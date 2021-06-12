@@ -1,9 +1,24 @@
+import {gql, useMutation} from '@apollo/client';
 import useInput from '../hooks/use-input';
 
 const isNotEmpty = (value) => value.trim() !== '';
 const isEmail = (value) => value.includes('@');
 
+const registerUser = gql`
+  mutation RegisterUser(
+    $first_name: String!
+    $last_name: String!
+    $email: String!
+  ) {
+    registerUser(
+      user: {first_name: $first_name, last_name: $last_name, email: $email}
+    )
+  }
+`;
+
 const BasicForm = (props) => {
+  const [register_User, {data}] = useMutation(registerUser);
+
   const {
     value: firstNameValue,
     isValid: firstNameIsValid,
@@ -37,11 +52,22 @@ const BasicForm = (props) => {
 
   const submitHandler = (event) => {
     event.preventDefault();
-
+    register_User({
+      variables: {
+        first_name: firstNameValue,
+        last_name: lastNameValue,
+        email: emailValue,
+      },
+    })
+      .then((val) => {
+        console.log(val);
+      })
+      .catch((e) => {
+        console.log(e.message);
+      });
     if (!formIsValid) {
       return;
     }
-
     console.log('Submitted!');
     console.log(firstNameValue, lastNameValue, emailValue);
 
