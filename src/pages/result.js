@@ -7,6 +7,7 @@ import {
   Checkbox,
   Button,
   CircularProgress,
+  Typography,
 } from '@material-ui/core';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
