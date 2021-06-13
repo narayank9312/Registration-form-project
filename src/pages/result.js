@@ -1,5 +1,6 @@
 import React from 'react';
 import {gql, useMutation, useQuery, useSubscription} from '@apollo/client';
+
 import {
   makeStyles,
   createMuiTheme,
@@ -17,6 +18,11 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
 import {blue} from '@material-ui/core/colors';
+
+require('@tensorflow/tfjs-backend-cpu');
+require('@tensorflow/tfjs-backend-webgl');
+const cocoSsd = require('@tensorflow-models/coco-ssd');
+
 const useStyles = makeStyles({
   table: {
     minWidth: 650,
@@ -63,6 +69,50 @@ export default function ResultPage() {
   const {data, loading, error, refetch} = useQuery(getAllRegisterdUsers);
   const [registeredUsers, setRegisteredUsers] = React.useState([]);
   const subscription = useSubscription(newUserRegistration);
+  const videoRef = React.useRef();
+  const canvasRef = React.useRef();
+  const canvasVideoRef = React.useRef();
+  const ctxRef = React.useRef();
+  const objectDetectionModel = React.useRef();
+
+  React.useEffect(() => {
+    cocoSsd.load().then((model) => {
+      objectDetectionModel.current = model;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (videoRef.current && canvasRef.current) {
+      videoRef.current.addEventListener('waiting', () => {
+        clearInterval(canvasVideoRef.current);
+      });
+      videoRef.current.addEventListener('pause', (event) => {
+        clearInterval(canvasVideoRef.current);
+      });
+      videoRef.current.addEventListener('play', () => {
+        (function loop() {
+          console.log('i am still here');
+          if (!ctxRef.current) {
+            ctxRef.current = canvasRef.current.getContext('2d'); // ctx so that we can use it to make a square around objects
+          }
+          ctxRef.current.drawImage(videoRef.current, 0, 0);
+
+          objectDetectionModel.current
+            ?.detect(videoRef.current)
+            .then((predection) => {
+              predection.forEach((val) => {
+                if (!videoRef.current.paused && !videoRef.current.ended) {
+                  ctxRef.current.beginPath();
+                  ctxRef.current.rect(...val.bbox);
+                  ctxRef.current.stroke();
+                }
+              });
+            });
+          canvasVideoRef.current = setInterval(loop, 1000 / 30);
+        })();
+      });
+    }
+  }, [videoRef.current]);
 
   React.useEffect(() => {
     console.log('i am here');
@@ -201,11 +251,13 @@ export default function ResultPage() {
         </TableContainer>
         <div style={{width: '100%', height: '100%', marginTop: 30}}>
           <video
+            ref={videoRef}
             src="/videos/final_page.mp4"
             style={{width: '100%', height: '100%'}}
             autoPlay
             controls
           ></video>
+          <canvas id="canvas" ref={canvasRef}></canvas>
         </div>
       </>
     </ThemeProvider>
