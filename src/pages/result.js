@@ -1,5 +1,5 @@
 import React from 'react';
-import {gql, useMutation, useQuery} from '@apollo/client';
+import {gql, useMutation, useQuery, useSubscription} from '@apollo/client';
 import {
   makeStyles,
   createMuiTheme,
@@ -16,13 +16,25 @@ import TableContainer from '@material-ui/core/TableContainer';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
-import IconButton from '@material-ui/core/IconButton';
 import {blue} from '@material-ui/core/colors';
 const useStyles = makeStyles({
   table: {
     minWidth: 650,
   },
 });
+
+const newUserRegistration = gql`
+  subscription {
+    newUserRegistration {
+      first_name
+      last_name
+      id
+      createdAt
+      email
+    }
+  }
+`;
+
 const getAllRegisterdUsers = gql`
   query {
     getRegistration {
@@ -50,6 +62,18 @@ const removeSelectedUsers = gql`
 export default function ResultPage() {
   const {data, loading, error, refetch} = useQuery(getAllRegisterdUsers);
   const [registeredUsers, setRegisteredUsers] = React.useState([]);
+  const subscription = useSubscription(newUserRegistration);
+
+  React.useEffect(() => {
+    console.log('i am here');
+    console.log(subscription.data);
+    if (subscription.data) {
+      setRegisteredUsers((users) => [
+        ...users,
+        subscription.data.newUserRegistration,
+      ]);
+    }
+  }, [subscription.data]);
 
   React.useEffect(() => {
     if (!loading && !error) {
@@ -80,95 +104,110 @@ export default function ResultPage() {
     <Typography>There's Some Error</Typography>
   ) : (
     <ThemeProvider theme={theme}>
-      <TableContainer component={Paper}>
-        <Table className={classes.table} aria-label="simple table">
-          <TableHead>
-            {(allChecked ||
-              Object.keys(selectedUser).filter((val) => selectedUser[val])
-                .length > 0) && (
-              <Button
-                onClick={() => {
-                  setIsDeleting(true);
-                  if (allChecked && !isDeleting) {
-                    deleteUsers()
-                      .then(() => {
-                        setRegisteredUsers([]);
-                      })
-                      .finally(() => {
-                        setAllChecked(false);
-                        setIsDeleting(false);
-                      });
-                  } else if (!isDeleting) {
-                    deleteSelectedUsers({
-                      variables: {
-                        ids: Object.keys(selectedUser)
-                          .filter((val) => selectedUser[val])
-                          .map((val) => parseInt(val)),
-                      },
-                    })
-                      .then(() => {
-                        setRegisteredUsers((users) => {
-                          return users.filter((user) => !selectedUser[user.id]);
+      <>
+        <TableContainer component={Paper}>
+          <Table className={classes.table} aria-label="simple table">
+            <TableHead>
+              {(allChecked ||
+                Object.keys(selectedUser).filter((val) => selectedUser[val])
+                  .length > 0) && (
+                <Button
+                  onClick={() => {
+                    setIsDeleting(true);
+                    if (allChecked && !isDeleting) {
+                      deleteUsers()
+                        .then(() => {
+                          setRegisteredUsers([]);
+                        })
+                        .finally(() => {
+                          setAllChecked(false);
+                          setIsDeleting(false);
                         });
+                    } else if (!isDeleting) {
+                      deleteSelectedUsers({
+                        variables: {
+                          ids: Object.keys(selectedUser)
+                            .filter((val) => selectedUser[val])
+                            .map((val) => parseInt(val)),
+                        },
                       })
-                      .finally(() => {
-                        setIsDeleting(false);
-                        setSelectedUsers({});
-                      });
-                  }
-                }}
-              >
-                {isDeleting ? (
-                  <CircularProgress style={{height: 30, width: 30}} />
-                ) : (
-                  'Delete'
-                )}
-              </Button>
-            )}
-            <TableRow>
-              <TableCell>
-                <Checkbox
-                  checked={allChecked}
-                  onChange={(e, checked) => setAllChecked(checked)}
-                  color="primary"
-                  disabled={registeredUsers.length < 1}
-                />
-              </TableCell>
-              <TableCell>Id</TableCell>
-              <TableCell align="left">First_Name</TableCell>
-              <TableCell align="left">Last_Name</TableCell>
-              <TableCell align="left">Email</TableCell>
-              <TableCell align="left">Registered At</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {registeredUsers.map((row, i) => (
-              <TableRow key={row.name}>
-                <TableCell component="th" scope="row">
+                        .then(() => {
+                          setRegisteredUsers((users) => {
+                            return users.filter(
+                              (user) => !selectedUser[user.id]
+                            );
+                          });
+                        })
+                        .finally(() => {
+                          setIsDeleting(false);
+                          setSelectedUsers({});
+                        });
+                    }
+                  }}
+                >
+                  {isDeleting ? (
+                    <CircularProgress style={{height: 30, width: 30}} />
+                  ) : (
+                    'Delete'
+                  )}
+                </Button>
+              )}
+              <TableRow>
+                <TableCell>
                   <Checkbox
-                    checked={allChecked || selectedUser[row.id]}
-                    onChange={(e, checked) => {
-                      setSelectedUsers((val) => ({...val, [row.id]: checked}));
-                    }}
+                    checked={allChecked}
+                    onChange={(e, checked) => setAllChecked(checked)}
+                    color="primary"
+                    disabled={registeredUsers.length < 1}
                   />
                 </TableCell>
-                <TableCell component="th" scope="row">
-                  {i + 1}
-                  {/* {row.id} */}
-                </TableCell>
-                <TableCell align="left">{row.first_name}</TableCell>
-                <TableCell align="left">{row.last_name}</TableCell>
-                <TableCell align="left">{row.email}</TableCell>
-                <TableCell align="left">
-                  {new Date(parseFloat(row.createdAt))
-                    .toUTCString()
-                    .replace('GMT', '')}
-                </TableCell>
+                <TableCell>Id</TableCell>
+                <TableCell align="left">First_Name</TableCell>
+                <TableCell align="left">Last_Name</TableCell>
+                <TableCell align="left">Email</TableCell>
+                <TableCell align="left">Registered At</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {registeredUsers.map((row, i) => (
+                <TableRow key={row.name}>
+                  <TableCell component="th" scope="row">
+                    <Checkbox
+                      checked={allChecked || selectedUser[row.id]}
+                      onChange={(e, checked) => {
+                        setSelectedUsers((val) => ({
+                          ...val,
+                          [row.id]: checked,
+                        }));
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell component="th" scope="row">
+                    {i + 1}
+                    {/* {row.id} */}
+                  </TableCell>
+                  <TableCell align="left">{row.first_name}</TableCell>
+                  <TableCell align="left">{row.last_name}</TableCell>
+                  <TableCell align="left">{row.email}</TableCell>
+                  <TableCell align="left">
+                    {new Date(parseFloat(row.createdAt))
+                      .toUTCString()
+                      .replace('GMT', '')}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <div style={{width: '100%', height: '100%', marginTop: 30}}>
+          <video
+            src="/videos/final_page.mp4"
+            style={{width: '100%', height: '100%'}}
+            autoPlay
+            controls
+          ></video>
+        </div>
+      </>
     </ThemeProvider>
   );
 }
