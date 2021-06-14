@@ -83,12 +83,6 @@ export default function ResultPage() {
 
   React.useEffect(() => {
     if (videoRef.current && canvasRef.current) {
-      videoRef.current.addEventListener('waiting', () => {
-        clearInterval(canvasVideoRef.current);
-      });
-      videoRef.current.addEventListener('pause', (event) => {
-        clearInterval(canvasVideoRef.current);
-      });
       videoRef.current.addEventListener('play', () => {
         (function loop() {
           console.log('i am still here');
@@ -96,23 +90,28 @@ export default function ResultPage() {
             ctxRef.current = canvasRef.current.getContext('2d'); // ctx so that we can use it to make a square around objects
           }
           ctxRef.current.drawImage(videoRef.current, 0, 0);
-
-          objectDetectionModel.current
-            ?.detect(videoRef.current)
-            .then((predection) => {
-              predection.forEach((val) => {
-                if (!videoRef.current.paused && !videoRef.current.ended) {
-                  ctxRef.current.beginPath();
-                  ctxRef.current.rect(...val.bbox);
-                  ctxRef.current.stroke();
-                }
+          if (!videoRef.current.paused && !videoRef.current.ended) {
+            objectDetectionModel.current
+              ?.detect(videoRef.current)
+              .then((predection) => {
+                predection.forEach((val) => {
+                  if (!videoRef.current.paused && !videoRef.current.ended) {
+                    ctxRef.current.beginPath();
+                    ctxRef.current.rect(...val.bbox);
+                    ctxRef.current.stroke();
+                  }
+                });
               });
-            });
-          canvasVideoRef.current = setInterval(loop, 1000 / 30);
+            canvasVideoRef.current = setTimeout(loop, 1000 / 30);
+          } else {
+            if (canvasVideoRef.current) {
+              clearTimeout(canvasVideoRef.current);
+            }
+          }
         })();
       });
     }
-  }, [videoRef.current]);
+  }, [videoRef.current, canvasVideoRef.current]);
 
   React.useEffect(() => {
     console.log('i am here');
@@ -257,7 +256,7 @@ export default function ResultPage() {
             autoPlay
             controls
           ></video>
-          <canvas id="canvas" ref={canvasRef}></canvas>
+          <canvas id="canvas" width="900" height="900" ref={canvasRef}></canvas>
         </div>
       </>
     </ThemeProvider>

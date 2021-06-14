@@ -2,7 +2,7 @@ import {split, HttpLink} from '@apollo/client';
 import {getMainDefinition} from '@apollo/client/utilities';
 import {WebSocketLink} from '@apollo/client/link/ws';
 
-const gqlEndpoint = `http://18.198.207.183:3000/graphql`;
+const gqlEndpoint = `http://18.184.161.22:3000/graphql`;
 
 const httpLink = new HttpLink({
   uri: gqlEndpoint,
